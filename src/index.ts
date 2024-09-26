@@ -2,21 +2,13 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import http from "http";
-import { corsHeadersMiddleware, corsOptions } from "./cors";
 import { screenshotHandler } from "./screenshotHandler";
 
 dotenv.config();
 
 export const app = express();
 
-// Apply CORS middleware to all routes
-app.use(cors(corsOptions));
-
-// Apply custom CORS headers middleware
-app.use(corsHeadersMiddleware);
-
-// Handle preflight requests
-app.options("*", cors(corsOptions));
+app.use(cors());
 
 app.use(express.json());
 
