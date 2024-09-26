@@ -1,17 +1,45 @@
+import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import http from "http";
-import { corsMiddleware } from "./cors";
+import { corsMiddleware, corsOptions } from "./cors";
 import { screenshotHandler } from "./screenshotHandler";
 dotenv.config();
 
 export const app = express();
 
+// Logging middleware
+app.use((req, res, next) => {
+  console.log(`Incoming request: ${req.method} ${req.url}`);
+  console.log("Origin:", req.headers.origin);
+  next();
+});
+
 app.use(corsMiddleware);
+
+// Add pre-flight OPTIONS handler
+app.options("*", cors(corsOptions));
+
+// CORS headers logging middleware
+app.use((req, res, next) => {
+  console.log("CORS headers set:", res.getHeaders());
+  next();
+});
 
 app.use(express.json());
 
 app.post("/screenshot", (req, res) => {
+  // Manually set CORS headers as a last resort
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET, POST, OPTIONS, PUT, PATCH, DELETE"
+  );
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept"
+  );
+
   screenshotHandler(req, res);
 });
 
