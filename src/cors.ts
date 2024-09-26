@@ -2,13 +2,27 @@ import cors from "cors";
 import express from "express";
 
 export const corsOptions: cors.CorsOptions = {
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  origin: true, // Allow all origins
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
 };
 
 export const corsMiddleware = cors(corsOptions);
+
+// CORS headers middleware
+export const corsHeadersMiddleware = (req: any, res: any, next: any) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET,PUT,POST,DELETE,PATCH,OPTIONS"
+  );
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, Content-Length, X-Requested-With"
+  );
+  next();
+};
 
 // Logging middleware
 export const loggingMiddleware = (
