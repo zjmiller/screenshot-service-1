@@ -25,6 +25,7 @@ export async function screenshotHandler(request: Request, response: Response) {
 
   let screenshot = cachedScreenshot;
   let accessibilityTree = cachedAccessibilityTree;
+  let browser;
 
   if (cachedScreenshot && cachedAccessibilityTree) {
     console.log(
@@ -41,7 +42,7 @@ export async function screenshotHandler(request: Request, response: Response) {
 
     try {
       const setupStartTime = Date.now();
-      let browser = await chromium.launch({
+      browser = await chromium.launch({
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
         headless: true,
       });
@@ -51,18 +52,31 @@ export async function screenshotHandler(request: Request, response: Response) {
       const urlWithHeadless = new URL(url);
       urlWithHeadless.searchParams.set("headless", "true");
 
+      console.log(`Navigating to: ${urlWithHeadless.toString()}`);
       await page.goto(urlWithHeadless.toString(), {
         waitUntil: "networkidle",
+        timeout: 30000, // 30 seconds timeout
       });
 
-      await page.waitForSelector(`#${elementId}`);
+      console.log(`Waiting for selector: #${elementId}`);
+      try {
+        await page.waitForSelector(`#${elementId}`, { timeout: 10000 }); // 10 seconds timeout
+      } catch (selectorError) {
+        console.error(
+          `Timeout waiting for selector #${elementId}:`,
+          selectorError
+        );
+        throw new Error(
+          `Element with id ${elementId} not found within timeout`
+        );
+      }
 
       const element = await page.$(`#${elementId}`);
       if (!element) {
         throw new Error(`Element with id ${elementId} not found`);
       }
 
-      // wait for 2 seconds
+      console.log(`Element #${elementId} found, waiting for 2 seconds`);
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       const setupEndTime = Date.now();
@@ -137,9 +151,11 @@ export async function screenshotHandler(request: Request, response: Response) {
         "Error taking screenshot or getting accessibility tree:",
         error
       );
-      return response
-        .status(500)
-        .json({ error: "Failed to take screenshot or get accessibility tree" });
+      await browser?.close(); // Ensure browser is closed in case of error
+      return response.status(500).json({
+        error: "Failed to take screenshot or get accessibility tree",
+        details: (error as Error).message,
+      });
     }
   }
 
