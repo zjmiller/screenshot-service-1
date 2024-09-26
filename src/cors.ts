@@ -1,7 +1,7 @@
 import cors from "cors";
 import express from "express";
 
-export const corsOptions = {
+export const corsOptions: cors.CorsOptions = {
   origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
