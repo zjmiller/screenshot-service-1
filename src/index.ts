@@ -18,7 +18,7 @@ app.use((req, res, next) => {
 app.use(corsMiddleware);
 
 // Add pre-flight OPTIONS handler
-app.options("*", cors(corsOptions as cors.CorsOptions));
+app.options("*", cors(corsOptions as cors.CorsOptions) as any);
 
 // CORS headers logging middleware
 app.use((req, res, next) => {
