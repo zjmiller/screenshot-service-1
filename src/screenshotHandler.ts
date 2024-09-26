@@ -10,10 +10,6 @@ export async function screenshotHandler(request: Request, response: Response) {
 
   console.log("Request body:", request.body);
 
-  console.log("Request:", request);
-
-  console.log("Request Stringified:", JSON.stringify(request, null, 2));
-
   if (!elementId || !url) {
     return response
       .status(400)

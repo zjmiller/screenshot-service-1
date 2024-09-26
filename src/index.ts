@@ -10,7 +10,11 @@ export const app = express();
 
 app.use(cors());
 
-app.use(express.text());
+console.log("CORS enabled");
+
+app.use(express.json());
+
+console.log("JSON body parser enabled");
 
 app.post("/screenshot", screenshotHandler);
 
