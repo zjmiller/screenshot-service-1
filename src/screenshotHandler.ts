@@ -10,6 +10,8 @@ export async function screenshotHandler(request: Request, response: Response) {
 
   console.log("Request body:", request.body);
 
+  console.log("Request:", request);
+
   if (!elementId || !url) {
     return response
       .status(400)
