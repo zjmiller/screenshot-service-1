@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "npm install && sudo npx playwright install-deps && npx playwright install chromium",
+    "build": "npm install && npx playwright install-deps && npx playwright install chromium",
     "start": "ts-node-dev src/index.ts",
     "dev": "ts-node-dev src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
