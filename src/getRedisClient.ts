@@ -7,7 +7,21 @@ export async function getRedisClient() {
     redisClient = createClient({
       url: process.env.REDIS_URL,
     });
-    await redisClient.connect();
+
+    redisClient.on("error", (err) => {
+      console.error("Redis error:", err);
+    });
+
+    redisClient.on("end", () => {
+      console.log("Redis connection closed.");
+    });
+
+    try {
+      await redisClient.connect();
+    } catch (error) {
+      console.error("Failed to connect to Redis:", error);
+      throw new Error("Redis connection failed");
+    }
   }
   return redisClient;
 }
