@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc && npm install && npx playwright install chromium --with-deps",
+    "build": "npm install && npx tsc && npx playwright install chromium --with-deps",
     "start": "npx pm2-runtime start dist/index.js --name screenshot-server",
     "dev": "ts-node-dev src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
