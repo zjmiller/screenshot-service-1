@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { chromium } from "playwright";
-import { getRedisClient } from "./getRedisClient";
+import { getRedisClient } from "./getRedisClient.js";
 
 export async function screenshotHandler(request: Request, response: Response) {
   const startTime = Date.now();

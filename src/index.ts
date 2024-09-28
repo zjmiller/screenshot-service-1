@@ -2,8 +2,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import http from "http";
-import { screenshotHandler } from "./screenshotHandler";
-import { asyncHandler } from "./utils/asyncHandler";
+import { screenshotHandler } from "./screenshotHandler.js";
+import { asyncHandler } from "./utils/asyncHandler.js";
 
 dotenv.config();
 
