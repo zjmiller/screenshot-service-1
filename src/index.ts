@@ -23,7 +23,7 @@ app.post("/screenshot", asyncHandler(screenshotHandler));
 const server = http.createServer(app);
 
 // In Heroku, must use process.env.PORT as the external web server
-const PORT = Number(process.env.PORT) || 8080;
+const PORT = Number(process.env.PORT) || 3000;
 
 server.listen(PORT, () => {
   return console.log(`Node backend is listening on ${PORT}`);
