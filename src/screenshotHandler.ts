@@ -76,8 +76,8 @@ export async function screenshotHandler(request: Request, response: Response) {
         throw new Error(`Element with id ${elementId} not found`);
       }
 
-      console.log(`Element #${elementId} found, waiting for 2 seconds`);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // console.log(`Element #${elementId} found, waiting for 2 seconds`);
+      // await new Promise((resolve) => setTimeout(resolve, 2000));
 
       const setupEndTime = Date.now();
       console.log(`Setup time: ${setupEndTime - setupStartTime}ms`);
