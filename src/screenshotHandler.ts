@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
-import { chromium } from "playwright";
+import { Browser, chromium } from "playwright";
 import { getRedisClient } from "./getRedisClient.js";
+
+let browser: Browser | null = null;
 
 export async function screenshotHandler(request: Request, response: Response) {
   const startTime = Date.now();
@@ -25,7 +27,6 @@ export async function screenshotHandler(request: Request, response: Response) {
 
   let screenshot = cachedScreenshot;
   let accessibilityTree = cachedAccessibilityTree;
-  let browser;
 
   if (cachedScreenshot && cachedAccessibilityTree) {
     console.log(
@@ -42,17 +43,24 @@ export async function screenshotHandler(request: Request, response: Response) {
 
     try {
       const setupStartTime = Date.now();
-      browser = await chromium.launch({
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-        headless: true,
+      browser =
+        browser ||
+        (await chromium.launch({
+          args: ["--no-sandbox", "--disable-setuid-sandbox"],
+          headless: true,
+        }));
+
+      const context = await browser.newContext({
+        viewport: { width: 1580, height: 1080 },
       });
 
-      const page = await browser.newPage();
+      const page = await context.newPage();
 
       const urlWithHeadless = new URL(url);
       urlWithHeadless.searchParams.set("headless", "true");
 
       console.log(`Navigating to: ${urlWithHeadless.toString()}`);
+
       await page.goto(urlWithHeadless.toString(), {
         waitUntil: "networkidle",
         timeout: 30000, // 30 seconds timeout
@@ -76,15 +84,12 @@ export async function screenshotHandler(request: Request, response: Response) {
         throw new Error(`Element with id ${elementId} not found`);
       }
 
-      // console.log(`Element #${elementId} found, waiting for 2 seconds`);
-      // await new Promise((resolve) => setTimeout(resolve, 2000));
-
       const setupEndTime = Date.now();
       console.log(`Setup time: ${setupEndTime - setupStartTime}ms`);
 
       if (!cachedScreenshot) {
         const screenshotStartTime = Date.now();
-        const screenshotBuffer = await element.screenshot({ type: "png" });
+        const screenshotBuffer = await page.screenshot({ type: "png" });
         screenshot = `data:image/png;base64,${screenshotBuffer.toString(
           "base64"
         )}`;
@@ -106,14 +111,21 @@ export async function screenshotHandler(request: Request, response: Response) {
         let result = "";
 
         for (const el of elements) {
-          const [dataNumber, dataType, dataValue, dataOptions, dataSelected] =
-            await Promise.all([
-              el.getAttribute("data-number"),
-              el.getAttribute("data-type"),
-              el.getAttribute("data-value"),
-              el.getAttribute("data-options"),
-              el.getAttribute("data-selected"),
-            ]);
+          const [
+            dataNumber,
+            dataType,
+            dataValue,
+            dataOptions,
+            dataSelected,
+            ariaLabel,
+          ] = await Promise.all([
+            el.getAttribute("data-number"),
+            el.getAttribute("data-type"),
+            el.getAttribute("data-value"),
+            el.getAttribute("data-options"),
+            el.getAttribute("data-selected"),
+            el.getAttribute("aria-label"),
+          ]);
 
           let elementInfo = `[${dataNumber}] [${dataType}] [${
             dataValue || ""
@@ -124,6 +136,10 @@ export async function screenshotHandler(request: Request, response: Response) {
             elementInfo += ` Current selection: ${
               dataSelected ? `[${dataSelected}]` : "None"
             }`;
+          }
+
+          if (ariaLabel) {
+            elementInfo += ` [${ariaLabel}]`;
           }
 
           result += elementInfo + "\n";
@@ -145,7 +161,7 @@ export async function screenshotHandler(request: Request, response: Response) {
       }
 
       await page.close();
-      await browser.close();
+      await context.close();
     } catch (error) {
       console.error(
         "Error taking screenshot or getting accessibility tree:",
