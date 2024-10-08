@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
+import pLimit from "p-limit";
 import { Browser, chromium } from "playwright";
 import { getRedisClient } from "./getRedisClient.js";
+
+const limitConcurrentPromises = pLimit(5);
 
 let browser: Browser | null = null;
 
@@ -25,23 +28,35 @@ export async function screenshotHandler(request: Request, response: Response) {
   const cachedScreenshot = await redis.get(screenshotCacheKey);
   const cachedAccessibilityTree = await redis.get(accessibilityCacheKey);
 
-  let screenshot = cachedScreenshot;
-  let accessibilityTree = cachedAccessibilityTree;
-
   if (cachedScreenshot && cachedAccessibilityTree) {
     console.log(
       "\n\nCache HIT for screenshot and accessibility tree:\n",
       screenshotCacheKey,
       "\n\n"
     );
-  } else {
-    console.log(
-      "\n\nCache MISS for screenshot or accessibility tree:\n",
-      screenshotCacheKey,
-      "\n\n"
-    );
+    const endTime = Date.now();
+    console.log(`Total execution time (cached): ${endTime - startTime}ms`);
+    return response.json({
+      screenshot: cachedScreenshot,
+      accessibilityTree: cachedAccessibilityTree,
+    });
+  }
 
-    try {
+  if (!cachedScreenshot) {
+    console.log("\n\nCache MISS for screenshot:\n", screenshotCacheKey);
+  }
+  if (!cachedAccessibilityTree) {
+    console.log(
+      "\n\nCache MISS for accessibility tree:\n",
+      accessibilityCacheKey
+    );
+  }
+
+  let screenshot;
+  let accessibilityTree;
+
+  try {
+    await limitConcurrentPromises(async () => {
       const setupStartTime = Date.now();
       browser =
         browser ||
@@ -162,17 +177,17 @@ export async function screenshotHandler(request: Request, response: Response) {
 
       await page.close();
       await context.close();
-    } catch (error) {
-      console.error(
-        "Error taking screenshot or getting accessibility tree:",
-        error
-      );
-      await browser?.close(); // Ensure browser is closed in case of error
-      return response.status(500).json({
-        error: "Failed to take screenshot or get accessibility tree",
-        details: (error as Error).message,
-      });
-    }
+    });
+  } catch (error) {
+    console.error(
+      "Error taking screenshot or getting accessibility tree:",
+      error
+    );
+    await browser?.close(); // Ensure browser is closed in case of error
+    return response.status(500).json({
+      error: "Failed to take screenshot or get accessibility tree",
+      details: (error as Error).message,
+    });
   }
 
   const endTime = Date.now();
