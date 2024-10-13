@@ -58,12 +58,13 @@ export async function screenshotHandler(request: Request, response: Response) {
   try {
     await limitConcurrentPromises(async () => {
       const setupStartTime = Date.now();
-      browser =
-        browser ||
-        (await chromium.launch({
+
+      if (!browser || !browser.isConnected()) {
+        browser = await chromium.launch({
           args: ["--no-sandbox", "--disable-setuid-sandbox"],
           headless: true,
-        }));
+        });
+      }
 
       const context = await browser.newContext({
         viewport: { width: 1580, height: 1080 },
@@ -183,7 +184,12 @@ export async function screenshotHandler(request: Request, response: Response) {
       "Error taking screenshot or getting accessibility tree:",
       error
     );
-    await browser?.close(); // Ensure browser is closed in case of error
+
+    if (browser) {
+      await browser.close();
+      browser = null;
+    }
+
     return response.status(500).json({
       error: "Failed to take screenshot or get accessibility tree",
       details: (error as Error).message,

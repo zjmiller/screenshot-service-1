@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const cacheBustingPrefix = "b5";
+const cacheBustingPrefix = "a7";
 let cacheBustingIndex = 0;
 
 // Function to perform a single request and measure its response time
@@ -22,6 +22,7 @@ const fetch = async (url) => {
 
 // Function to handle multiple requests concurrently
 const makeRequests = async (url, numRequests) => {
+  console.log(`Making ${numRequests} requests per second`);
   const requests = [];
   for (let i = 0; i < numRequests; i++) {
     requests.push(fetch(url));
@@ -32,10 +33,10 @@ const makeRequests = async (url, numRequests) => {
 
 // Main function to run the test
 const main = async () => {
-  // const API_URL = "https://screenshot-service.duckdns.org/screenshot";
-  const API_URL = "http://localhost:3000/screenshot";
-  const numRequestsPerSecond = 20;
-  const durationInSeconds = 1; // Adjust the duration as needed
+  const API_URL = "https://screenshot-service.duckdns.org/screenshot";
+  // const API_URL = "http://localhost:3000/screenshot";
+  const numRequestsPerSecond = 4;
+  const durationInSeconds = 20; // Adjust the duration as needed
 
   // 3,4 = 6.5-7.5 seconds response
   // 3,4 = almost 3 seconds response (Basic Regular Intel 8 vCPUs 16 GB 10 GB 6 TB $96/mo $0.143/hr)
@@ -57,19 +58,21 @@ const main = async () => {
   // 20,3 $109/mo CPU-OPTIMIZED = 11s
 
   for (let i = 0; i < durationInSeconds; i++) {
-    const responseTimes = await makeRequests(API_URL, numRequestsPerSecond);
-    const averageResponseTime =
-      responseTimes.reduce((acc, curr) => acc + curr, 0) / responseTimes.length;
-    console.log(
-      `Response Times for second ${i + 1}:`,
-      responseTimes.map((time) => (time / 1000).toFixed(1)).join(", ")
-    );
-    console.log(
-      `Average Response Time for second ${i + 1}: ${averageResponseTime.toFixed(
-        4
-      )} ms`
-    );
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before the next set of requests
+    makeRequests(API_URL, numRequestsPerSecond).then((responseTimes) => {
+      const averageResponseTime =
+        responseTimes.reduce((acc, curr) => acc + curr, 0) /
+        responseTimes.length;
+      console.log(
+        `Response Times for second ${i + 1}:`,
+        responseTimes.map((time) => (time / 1000).toFixed(1)).join(", ")
+      );
+      console.log(
+        `Average Response Time for second ${
+          i + 1
+        }: ${averageResponseTime.toFixed(4)} ms`
+      );
+    });
+    await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for 1 second before the next set of requests
   }
 };
 
