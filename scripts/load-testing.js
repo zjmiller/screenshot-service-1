@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const cacheBustingPrefix = "a7";
+const cacheBustingPrefix = "1a3";
 let cacheBustingIndex = 0;
 
 // Function to perform a single request and measure its response time
@@ -33,10 +33,10 @@ const makeRequests = async (url, numRequests) => {
 
 // Main function to run the test
 const main = async () => {
-  const API_URL = "https://screenshot-service.duckdns.org/screenshot";
-  // const API_URL = "http://localhost:3000/screenshot";
-  const numRequestsPerSecond = 4;
-  const durationInSeconds = 20; // Adjust the duration as needed
+  // const API_URL = "https://screenshot-service.duckdns.org/screenshot";
+  const API_URL = "http://localhost:8080/screenshot";
+  const numRequestsPerSecond = 10;
+  const durationInSeconds = 2; // Adjust the duration as needed
 
   // 3,4 = 6.5-7.5 seconds response
   // 3,4 = almost 3 seconds response (Basic Regular Intel 8 vCPUs 16 GB 10 GB 6 TB $96/mo $0.143/hr)
