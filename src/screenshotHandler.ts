@@ -6,6 +6,7 @@ let localBrowser: Browser | null = null;
 let localBrowserContextsInUse = 0;
 
 export async function screenshotHandler(request: Request, response: Response) {
+  const startTime = Date.now();
   let isUsingLocalBrowser = false;
 
   const { elementId, url } = request.body;
@@ -24,6 +25,10 @@ export async function screenshotHandler(request: Request, response: Response) {
   const cachedAccessibilityTree = await redis.get(accessibilityCacheKey);
 
   if (cachedScreenshot && cachedAccessibilityTree) {
+    const endTime = Date.now();
+    console.log(
+      `Using cached data. Total response time: ${endTime - startTime}ms`
+    );
     return response.json({
       screenshot: cachedScreenshot,
       accessibilityTree: cachedAccessibilityTree,
@@ -77,6 +82,10 @@ export async function screenshotHandler(request: Request, response: Response) {
       localBrowserContextsInUse = 0;
     }
 
+    const endTime = Date.now();
+    console.log(
+      `Error occurred. Total response time: ${endTime - startTime}ms`
+    );
     return response.status(500).json({
       error: "Failed to take screenshot or get accessibility tree",
       details: (error as Error).message,
@@ -97,6 +106,13 @@ export async function screenshotHandler(request: Request, response: Response) {
   if (!cachedAccessibilityTree && accessibilityTree) {
     redis.set(accessibilityCacheKey, accessibilityTree);
   }
+
+  const endTime = Date.now();
+  console.log(
+    `Using ${
+      isUsingLocalBrowser ? "local browser" : "browserless"
+    }. Total response time: ${endTime - startTime}ms`
+  );
 
   return response.json({
     screenshot,
