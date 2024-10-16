@@ -145,7 +145,7 @@ async function useBrowser(
   });
 
   try {
-    await page.waitForSelector(`#${elementId}`, { timeout: 30000 });
+    await page.waitForSelector(`#${elementId}`, { timeout: 10000 });
   } catch (selectorError) {
     throw new Error(`Element with id ${elementId} not found within timeout`);
   }
