@@ -1,6 +1,6 @@
-import { createClient } from "redis";
+import { createClient, RedisClientType } from "redis";
 
-let redisClient: ReturnType<typeof createClient> | null = null;
+let redisClient: RedisClientType | null = null;
 
 export async function getRedisClient() {
   if (!redisClient) {
@@ -8,20 +8,21 @@ export async function getRedisClient() {
       url: process.env.REDIS_URL,
     });
 
-    redisClient.on("error", (err) => {
-      console.error("Redis error:", err);
-    });
-
     redisClient.on("end", () => {
       console.log("Redis connection closed.");
+      // Disable caching by setting redisClient to null
+      redisClient = null;
     });
 
     try {
       await redisClient.connect();
-    } catch (error) {
+      console.log("Connected to Redis successfully.");
+    } catch (error: any) {
       console.error("Failed to connect to Redis:", error);
-      throw new Error("Redis connection failed");
+      // Proceed without using Redis caching
+      redisClient = null;
     }
   }
+
   return redisClient;
 }

@@ -20,9 +20,20 @@ export async function screenshotHandler(request: Request, response: Response) {
   const parsedUrl = new URL(url);
   const screenshotCacheKey = `screenshot:${parsedUrl.pathname}${parsedUrl.search}:${elementId}`;
   const accessibilityCacheKey = `accessibility:${parsedUrl.pathname}${parsedUrl.search}:${elementId}`;
-  const redis = await getRedisClient();
-  const cachedScreenshot = await redis.get(screenshotCacheKey);
-  const cachedAccessibilityTree = await redis.get(accessibilityCacheKey);
+
+  let redis = null;
+  let cachedScreenshot = null;
+  let cachedAccessibilityTree = null;
+  try {
+    redis = await getRedisClient();
+    if (redis) {
+      cachedScreenshot = await redis.get(screenshotCacheKey);
+      cachedAccessibilityTree = await redis.get(accessibilityCacheKey);
+    }
+  } catch (error: any) {
+    console.error("Error fetching from Redis:", error);
+    // Proceed without caching
+  }
 
   if (cachedScreenshot && cachedAccessibilityTree) {
     const endTime = Date.now();
@@ -99,12 +110,22 @@ export async function screenshotHandler(request: Request, response: Response) {
     await browser.close();
   }
 
-  if (!cachedScreenshot && screenshot) {
-    redis.set(screenshotCacheKey, screenshot);
-  }
+  if (redis) {
+    if (!cachedScreenshot && screenshot) {
+      try {
+        await redis.set(screenshotCacheKey, screenshot);
+      } catch (error) {
+        console.error("Error setting screenshot in Redis:", error);
+      }
+    }
 
-  if (!cachedAccessibilityTree && accessibilityTree) {
-    redis.set(accessibilityCacheKey, accessibilityTree);
+    if (!cachedAccessibilityTree && accessibilityTree) {
+      try {
+        await redis.set(accessibilityCacheKey, accessibilityTree);
+      } catch (error) {
+        console.error("Error setting accessibility tree in Redis:", error);
+      }
+    }
   }
 
   const endTime = Date.now();
