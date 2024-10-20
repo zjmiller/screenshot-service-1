@@ -43,6 +43,9 @@ export async function screenshotHandler(request: Request, response: Response) {
     return response.json({
       screenshot: cachedScreenshot,
       accessibilityTree: cachedAccessibilityTree,
+      didUseRedisCacheForScreenshot: true,
+      didUseRedisCacheForAccessibilityTree: true,
+      didUseBrowserless: false,
     });
   }
 
@@ -138,6 +141,9 @@ export async function screenshotHandler(request: Request, response: Response) {
   return response.json({
     screenshot,
     accessibilityTree,
+    didUseRedisCacheForScreenshot: !!cachedScreenshot,
+    didUseRedisCacheForAccessibilityTree: !!cachedAccessibilityTree,
+    didUseBrowserless: !isUsingLocalBrowser,
   });
 }
 
