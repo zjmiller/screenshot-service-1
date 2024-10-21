@@ -1,14 +1,11 @@
 import { Request, Response } from "express";
 import { Browser, chromium } from "playwright";
-import { getRedisClient } from "./getRedisClient.js";
 
 let localBrowser: Browser | null = null;
 let localBrowserContextsInUse = 0;
 
 export async function screenshotHandler(request: Request, response: Response) {
   const startTime = Date.now();
-  let isUsingLocalBrowser = false;
-
   const { elementId, url } = request.body;
 
   if (!elementId || !url) {
@@ -17,42 +14,10 @@ export async function screenshotHandler(request: Request, response: Response) {
       .json({ error: "Element ID and URL are required" });
   }
 
-  const parsedUrl = new URL(url);
-  const screenshotCacheKey = `screenshot:${parsedUrl.pathname}${parsedUrl.search}:${elementId}`;
-  const accessibilityCacheKey = `accessibility:${parsedUrl.pathname}${parsedUrl.search}:${elementId}`;
-
-  let redis = null;
-  let cachedScreenshot = null;
-  let cachedAccessibilityTree = null;
-  try {
-    redis = await getRedisClient();
-    if (redis) {
-      cachedScreenshot = await redis.get(screenshotCacheKey);
-      cachedAccessibilityTree = await redis.get(accessibilityCacheKey);
-    }
-  } catch (error: any) {
-    console.error("Error fetching from Redis:", error);
-    // Proceed without caching
-  }
-
-  if (cachedScreenshot && cachedAccessibilityTree) {
-    const endTime = Date.now();
-    console.log(
-      `Using cached data. Total response time: ${endTime - startTime}ms`
-    );
-    return response.json({
-      screenshot: cachedScreenshot,
-      accessibilityTree: cachedAccessibilityTree,
-      didUseRedisCacheForScreenshot: true,
-      didUseRedisCacheForAccessibilityTree: true,
-      didUseBrowserless: false,
-    });
-  }
-
   let screenshot;
   let accessibilityTree;
-
   let browser: Browser | null = null;
+  let isUsingLocalBrowser = false;
 
   try {
     if (!localBrowser || !localBrowser.isConnected()) {
@@ -74,13 +39,7 @@ export async function screenshotHandler(request: Request, response: Response) {
       );
     }
 
-    const result = await useBrowser(
-      browser,
-      url,
-      elementId,
-      !!cachedScreenshot,
-      !!cachedAccessibilityTree
-    );
+    const result = await useBrowser(browser, url, elementId);
     screenshot = result.screenshot;
     accessibilityTree = result.accessibilityTree;
   } catch (error) {
@@ -100,6 +59,7 @@ export async function screenshotHandler(request: Request, response: Response) {
     console.log(
       `Error occurred. Total response time: ${endTime - startTime}ms`
     );
+
     return response.status(500).json({
       error: "Failed to take screenshot or get accessibility tree",
       details: (error as Error).message,
@@ -113,24 +73,6 @@ export async function screenshotHandler(request: Request, response: Response) {
     await browser.close();
   }
 
-  if (redis) {
-    if (!cachedScreenshot && screenshot) {
-      try {
-        await redis.set(screenshotCacheKey, screenshot);
-      } catch (error) {
-        console.error("Error setting screenshot in Redis:", error);
-      }
-    }
-
-    if (!cachedAccessibilityTree && accessibilityTree) {
-      try {
-        await redis.set(accessibilityCacheKey, accessibilityTree);
-      } catch (error) {
-        console.error("Error setting accessibility tree in Redis:", error);
-      }
-    }
-  }
-
   const endTime = Date.now();
   console.log(
     `Using ${
@@ -141,19 +83,11 @@ export async function screenshotHandler(request: Request, response: Response) {
   return response.json({
     screenshot,
     accessibilityTree,
-    didUseRedisCacheForScreenshot: !!cachedScreenshot,
-    didUseRedisCacheForAccessibilityTree: !!cachedAccessibilityTree,
     didUseBrowserless: !isUsingLocalBrowser,
   });
 }
 
-async function useBrowser(
-  browser: Browser,
-  url: string,
-  elementId: string,
-  hasCachedScreenshot: boolean,
-  hasCachedAccessibilityTree: boolean
-) {
+async function useBrowser(browser: Browser, url: string, elementId: string) {
   let screenshot: string | undefined;
   let accessibilityTree: string | undefined;
 
@@ -182,50 +116,46 @@ async function useBrowser(
     throw new Error(`Element with id ${elementId} not found`);
   }
 
-  if (!hasCachedScreenshot) {
-    const screenshotBuffer = await page.screenshot({ type: "png" });
-    screenshot = `data:image/png;base64,${screenshotBuffer.toString("base64")}`;
-  }
+  const screenshotBuffer = await page.screenshot({ type: "png" });
+  screenshot = `data:image/png;base64,${screenshotBuffer.toString("base64")}`;
 
-  if (!hasCachedAccessibilityTree) {
-    const elements = await page.$$("[data-number]");
-    let result = "";
+  const elements = await page.$$("[data-number]");
+  let result = "";
 
-    for (const el of elements) {
-      const [
-        dataNumber,
-        dataType,
-        dataValue,
-        dataOptions,
-        dataSelected,
-        ariaLabel,
-      ] = await Promise.all([
-        el.getAttribute("data-number"),
-        el.getAttribute("data-type"),
-        el.getAttribute("data-value"),
-        el.getAttribute("data-options"),
-        el.getAttribute("data-selected"),
-        el.getAttribute("aria-label"),
-      ]);
+  for (const el of elements) {
+    const [
+      dataNumber,
+      dataType,
+      dataValue,
+      dataOptions,
+      dataSelected,
+      ariaLabel,
+    ] = await Promise.all([
+      el.getAttribute("data-number"),
+      el.getAttribute("data-type"),
+      el.getAttribute("data-value"),
+      el.getAttribute("data-options"),
+      el.getAttribute("data-selected"),
+      el.getAttribute("aria-label"),
+    ]);
 
-      let elementInfo = `[${dataNumber}] [${dataType}] [${dataValue || ""}]`;
+    let elementInfo = `[${dataNumber}] [${dataType}] [${dataValue || ""}]`;
 
-      if (dataOptions) {
-        elementInfo += ` [${dataOptions}]`;
-        elementInfo += ` Current selection: ${
-          dataSelected ? `[${dataSelected}]` : "None"
-        }`;
-      }
-
-      if (ariaLabel) {
-        elementInfo += ` [${ariaLabel}]`;
-      }
-
-      result += elementInfo + "\n";
+    if (dataOptions) {
+      elementInfo += ` [${dataOptions}]`;
+      elementInfo += ` Current selection: ${
+        dataSelected ? `[${dataSelected}]` : "None"
+      }`;
     }
 
-    accessibilityTree = result.trim();
+    if (ariaLabel) {
+      elementInfo += ` [${ariaLabel}]`;
+    }
+
+    result += elementInfo + "\n";
   }
+
+  accessibilityTree = result.trim();
 
   await page.close();
   await context.close();
