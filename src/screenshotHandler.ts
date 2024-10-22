@@ -155,6 +155,12 @@ async function useBrowser(browser: Browser, url: string, elementId: string) {
     result += elementInfo + "\n";
   }
 
+  const innerText = await element.innerText();
+  result += `The following is some redundant information about the page to ensure you don't miss anything: \n`;
+  result +=
+    "More specifically, the following is the innerText of the virtual browser, including the numbers in the element outlines\n";
+  result += innerText + "\n";
+
   accessibilityTree = result.trim();
 
   await page.close();
