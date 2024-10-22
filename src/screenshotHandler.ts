@@ -92,7 +92,7 @@ async function useBrowser(browser: Browser, url: string, elementId: string) {
   let accessibilityTree: string | undefined;
 
   const context = await browser.newContext({
-    viewport: { width: 1580, height: 1080 },
+    viewport: { width: 1580, height: 1280 },
   });
 
   const page = await context.newPage();
